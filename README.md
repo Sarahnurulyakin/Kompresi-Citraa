@@ -1,10 +1,10 @@
-# 🖼️ Studi Komparasi Algoritma Kompresi Citra (RLE vs LZW vs Huffman)
+# Studi Komparasi Algoritma Kompresi Citra (RLE vs LZW vs Huffman)
 
 Aplikasi desktop berbasis GUI (Graphical User Interface) untuk mengompresi dan menganalisis performa algoritma kompresi citra lossless (**Run-Length Encoding, Lempel-Ziv-Welch, dan Huffman Coding**) pada citra berformat BMP. Proyek ini dibuat sebagai **Project Akhir Mata Kuliah Sistem Multimedia (Semester 6)** di Program Studi Teknik Informatika, UIN Sunan Gunung Djati Bandung.
 
 ---
 
-## 🚀 Fitur Utama
+## Fitur Utama
 
 1. **Kompresi Tunggal (Single Compression)**
    * Memilih citra BMP secara interaktif.
@@ -66,7 +66,7 @@ KompresiCitra/
 
 ---
 
-## ⚙️ Penjelasan Algoritma Kompresi
+## Penjelasan Algoritma Kompresi
 
 ### 1. Run-Length Encoding (RLE)
 Algoritma kompresi lossless sederhana yang bekerja dengan mendeteksi barisan data (byte) berturut-turut yang bernilai sama (*runs*) dan menggantinya dengan sepasang nilai: **[Jumlah Kejadian (Count), Nilai Byte (Value)]**. 
@@ -85,7 +85,7 @@ Algoritma kompresi berbasis frekuensi kemunculan simbol. Karakter/byte yang pali
 
 ---
 
-## 💻 Cara Instalasi & Penggunaan
+## Cara Instalasi & Penggunaan
 
 ### 1. Kloning Repositori
 ```bash
@@ -126,7 +126,7 @@ python gui/dashboard.py
 
 ---
 
-## 📈 Metrik Evaluasi Performa
+## Metrik Evaluasi Performa
 Aplikasi ini menghitung performa kompresi berdasarkan beberapa rumus standar:
 * **Ukuran Awal & Akhir**: Dihitung dalam satuan *Kilobyte (KB)* atau *Bytes*.
 * **Rasio Kompresi (Compression Ratio)**:
@@ -137,9 +137,3 @@ Aplikasi ini menghitung performa kompresi berdasarkan beberapa rumus standar:
 * **Integritas Data (Validation)**: Memeriksa apakah byte gambar hasil dekompresi identik 100% dengan file asli (`f1.read() == f2.read()`).
 
 ---
-
-## 👤 Identitas Pengembang
-* **Nama**: Sarah Nurul Yakin
-* **Prodi**: Teknik Informatika
-* **Institusi**: UIN Sunan Gunung Djati Bandung
-* **Mata Kuliah**: Sistem Multimedia (Semester 6)
