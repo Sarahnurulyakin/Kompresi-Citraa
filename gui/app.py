@@ -2,6 +2,7 @@ import os
 import time
 import customtkinter as ctk
 import pandas as pd
+import numpy as np
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
@@ -30,6 +31,40 @@ def get_image_details(file_path):
             }
     except Exception:
         return None
+
+
+def calculate_metrics(original_path, decompressed_path):
+    """
+    Menghitung MSE (Mean Squared Error) dan PSNR (Peak Signal-to-Noise Ratio)
+    antara gambar original dan decompressed.
+    """
+    try:
+        if not original_path or not os.path.exists(original_path):
+            return {"mse": None, "psnr": None}
+        if not decompressed_path or not os.path.exists(decompressed_path):
+            return {"mse": None, "psnr": None}
+            
+        with Image.open(original_path) as img1, Image.open(decompressed_path) as img2:
+            img1_rgb = img1.convert("RGB")
+            img2_rgb = img2.convert("RGB")
+            
+            if img1_rgb.size != img2_rgb.size:
+                return {"mse": -1.0, "psnr": -1.0}
+                
+            arr1 = np.array(img1_rgb, dtype=np.float64)
+            arr2 = np.array(img2_rgb, dtype=np.float64)
+            
+            mse = np.mean((arr1 - arr2) ** 2)
+            if mse == 0:
+                psnr = float('inf')
+            else:
+                max_pixel = 255.0
+                psnr = 20 * np.log10(max_pixel / np.sqrt(mse))
+                
+            return {"mse": mse, "psnr": psnr}
+    except Exception as e:
+        print(f"Error calculating metrics: {e}")
+        return {"mse": None, "psnr": None}
 
 
 class App(ctk.CTk):
@@ -180,86 +215,120 @@ class App(ctk.CTk):
         tab = self.tabview.tab("Kompresi Tunggal")
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_rowconfigure(0, weight=3)  # Preview Frame
-        tab.grid_rowconfigure(1, weight=0)  # Segmented Button
-        tab.grid_rowconfigure(2, weight=2)  # Comparison Table Frame
+        tab.grid_rowconfigure(1, weight=2)  # Comparison Table Frame
 
         # Frame Panel Preview (Original vs Decompressed)
         self.previews_frame = ctk.CTkFrame(tab, fg_color="transparent")
         self.previews_frame.grid(row=0, column=0, pady=(10, 10), sticky="nsew")
         self.previews_frame.grid_columnconfigure(0, weight=1)
         self.previews_frame.grid_columnconfigure(1, weight=1)
+        self.previews_frame.grid_columnconfigure(2, weight=1)
+        self.previews_frame.grid_columnconfigure(3, weight=1)
         self.previews_frame.grid_rowconfigure(0, weight=1)
 
         # Kartu Gambar Original
         self.card_orig = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
-        self.card_orig.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        self.card_orig.grid(row=0, column=0, padx=(0, 5), sticky="nsew")
         
         lbl_orig_title = ctk.CTkLabel(
             self.card_orig, 
-            text="🖼️ GAMBAR ASLI (ORIGINAL)", 
-            font=("Segoe UI", 13, "bold"), 
+            text="🖼️ GAMBAR ASLI", 
+            font=("Segoe UI", 12, "bold"), 
             text_color=("#1e293b", "#f8fafc")
         )
         lbl_orig_title.pack(pady=10)
 
         self.lbl_orig_preview = ctk.CTkLabel(
             self.card_orig, 
-            text="Belum ada gambar yang dipilih", 
-            width=320, 
-            height=320, 
+            text="Belum ada gambar", 
+            width=200, 
+            height=200, 
             fg_color=("#cbd5e1", "#16161a"), 
             corner_radius=8
         )
-        self.lbl_orig_preview.pack(padx=15, pady=5, expand=True)
+        self.lbl_orig_preview.pack(padx=10, pady=5, expand=True)
 
-        self.lbl_orig_info = ctk.CTkLabel(self.card_orig, text="-", font=("Segoe UI", 12), text_color=("#64748b", "#94a3b8"))
+        self.lbl_orig_info = ctk.CTkLabel(self.card_orig, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"))
         self.lbl_orig_info.pack(pady=(5, 10))
 
-        # Kartu Gambar Decompressed
-        self.card_decomp = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
-        self.card_decomp.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
+        # Kartu Gambar Huffman Decompressed
+        self.card_huf = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
+        self.card_huf.grid(row=0, column=1, padx=(5, 5), sticky="nsew")
         
-        lbl_decomp_title = ctk.CTkLabel(
-            self.card_decomp, 
-            text="📥 HASIL DEKOMPRESI", 
-            font=("Segoe UI", 13, "bold"), 
+        lbl_huf_title = ctk.CTkLabel(
+            self.card_huf, 
+            text="📥 DEKOMPRESI HUFFMAN", 
+            font=("Segoe UI", 12, "bold"), 
             text_color=("#1e293b", "#f8fafc")
         )
-        lbl_decomp_title.pack(pady=10)
+        lbl_huf_title.pack(pady=10)
 
-        self.lbl_decomp_preview = ctk.CTkLabel(
-            self.card_decomp, 
+        self.lbl_huf_preview = ctk.CTkLabel(
+            self.card_huf, 
             text="Silakan jalankan kompresi", 
-            width=320, 
-            height=320, 
+            width=200, 
+            height=200, 
             fg_color=("#cbd5e1", "#16161a"), 
             corner_radius=8
         )
-        self.lbl_decomp_preview.pack(padx=15, pady=5, expand=True)
+        self.lbl_huf_preview.pack(padx=10, pady=5, expand=True)
 
-        self.lbl_decomp_info = ctk.CTkLabel(self.card_decomp, text="-", font=("Segoe UI", 12), text_color=("#64748b", "#94a3b8"))
-        self.lbl_decomp_info.pack(pady=(5, 10))
+        self.lbl_huf_info = ctk.CTkLabel(self.card_huf, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_huf_info.pack(pady=(5, 10))
 
-        # Segmented Button (Selector Algoritma)
-        self.segmented_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        self.segmented_frame.grid(row=1, column=0, pady=10, sticky="ew")
+        # Kartu Gambar LZW Decompressed
+        self.card_lzw = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
+        self.card_lzw.grid(row=0, column=2, padx=(5, 5), sticky="nsew")
         
-        lbl_select_algo = ctk.CTkLabel(self.segmented_frame, text="Pilih Algoritma Preview:", font=("Segoe UI", 13, "bold"))
-        lbl_select_algo.pack(side="left", padx=10)
-
-        self.active_algo_var = ctk.StringVar(value="LZW")
-        self.active_algo_btn = ctk.CTkSegmentedButton(
-            self.segmented_frame,
-            values=["RLE", "LZW", "Huffman"],
-            variable=self.active_algo_var,
-            font=("Segoe UI", 12, "bold"),
-            command=self.on_active_algo_changed
+        lbl_lzw_title = ctk.CTkLabel(
+            self.card_lzw, 
+            text="📥 DEKOMPRESI LZW", 
+            font=("Segoe UI", 12, "bold"), 
+            text_color=("#1e293b", "#f8fafc")
         )
-        self.active_algo_btn.pack(side="left", padx=10)
+        lbl_lzw_title.pack(pady=10)
+
+        self.lbl_lzw_preview = ctk.CTkLabel(
+            self.card_lzw, 
+            text="Silakan jalankan kompresi", 
+            width=200, 
+            height=200, 
+            fg_color=("#cbd5e1", "#16161a"), 
+            corner_radius=8
+        )
+        self.lbl_lzw_preview.pack(padx=10, pady=5, expand=True)
+
+        self.lbl_lzw_info = ctk.CTkLabel(self.card_lzw, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_lzw_info.pack(pady=(5, 10))
+
+        # Kartu Gambar RLE Decompressed
+        self.card_rle = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
+        self.card_rle.grid(row=0, column=3, padx=(5, 0), sticky="nsew")
+        
+        lbl_rle_title = ctk.CTkLabel(
+            self.card_rle, 
+            text="📥 DEKOMPRESI RLE", 
+            font=("Segoe UI", 12, "bold"), 
+            text_color=("#1e293b", "#f8fafc")
+        )
+        lbl_rle_title.pack(pady=10)
+
+        self.lbl_rle_preview = ctk.CTkLabel(
+            self.card_rle, 
+            text="Silakan jalankan kompresi", 
+            width=200, 
+            height=200, 
+            fg_color=("#cbd5e1", "#16161a"), 
+            corner_radius=8
+        )
+        self.lbl_rle_preview.pack(padx=10, pady=5, expand=True)
+
+        self.lbl_rle_info = ctk.CTkLabel(self.card_rle, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_rle_info.pack(pady=(5, 10))
 
         # Tabel Perbandingan (Bawah)
         self.table_wrapper = ctk.CTkFrame(tab, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
-        self.table_wrapper.grid(row=2, column=0, pady=(10, 0), sticky="nsew")
+        self.table_wrapper.grid(row=1, column=0, pady=(10, 0), sticky="nsew")
         
         lbl_table_title = ctk.CTkLabel(
             self.table_wrapper, 
@@ -273,7 +342,7 @@ class App(ctk.CTk):
         self.table_frame.pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
         # Setup grid kolom tabel
-        for c in range(9):
+        for c in range(11):
             self.table_frame.grid_columnconfigure(c, weight=1)
 
         self.build_comparison_table()
@@ -286,7 +355,7 @@ class App(ctk.CTk):
         headers = [
             "Algoritma", "Ukuran Awal", "Ukuran Akhir", 
             "Rasio Kompresi", "Space Saving", "Waktu Kompresi", 
-            "Waktu Dekompresi", "Validasi Lossless", "Status"
+            "Waktu Dekompresi", "Validasi Lossless", "MSE", "PSNR", "Status"
         ]
 
         for col_idx, h in enumerate(headers):
@@ -328,8 +397,14 @@ class App(ctk.CTk):
             self.table_cells[algo]["validation"] = ctk.CTkLabel(self.table_frame, text="-", font=("Segoe UI", 12), fg_color=bg_color)
             self.table_cells[algo]["validation"].grid(row=row_idx, column=7, padx=1, pady=1, sticky="nsew")
 
+            self.table_cells[algo]["mse"] = ctk.CTkLabel(self.table_frame, text="-", font=("Consolas", 12), fg_color=bg_color)
+            self.table_cells[algo]["mse"].grid(row=row_idx, column=8, padx=1, pady=1, sticky="nsew")
+
+            self.table_cells[algo]["psnr"] = ctk.CTkLabel(self.table_frame, text="-", font=("Consolas", 12), fg_color=bg_color)
+            self.table_cells[algo]["psnr"].grid(row=row_idx, column=9, padx=1, pady=1, sticky="nsew")
+
             self.table_cells[algo]["status"] = ctk.CTkLabel(self.table_frame, text="-", font=("Segoe UI", 12, "bold"), fg_color=bg_color)
-            self.table_cells[algo]["status"].grid(row=row_idx, column=8, padx=1, pady=1, sticky="nsew")
+            self.table_cells[algo]["status"].grid(row=row_idx, column=10, padx=1, pady=1, sticky="nsew")
 
     def setup_tab_batch(self):
         tab = self.tabview.tab("Analisis Dataset")
@@ -462,18 +537,18 @@ class App(ctk.CTk):
             self.lbl_details_text.configure(text="Error membaca info file.", text_color="#f43f5e")
 
         # Reset preview hasil dekompresi & tabel perbandingan
-        self.lbl_decomp_preview.configure(image=None, text="Menunggu kompresi...")
-        self.lbl_decomp_info.configure(text="-")
+        for algo in ["huf", "lzw", "rle"]:
+            getattr(self, f"lbl_{algo}_preview").configure(image=None, text="Menunggu kompresi...")
+            getattr(self, f"lbl_{algo}_info").configure(text="-")
         self.build_comparison_table()
 
         # Aktifkan tombol kompresi
         self.btn_compress.configure(state="normal")
 
-    def display_preview(self, label, path):
+    def display_preview(self, label, path, max_size=200):
         try:
             img = Image.open(path)
             # Resize dengan rasio aspek tetap
-            max_size = 300
             w, h = img.size
             if w > h:
                 new_w = max_size
@@ -542,6 +617,8 @@ class App(ctk.CTk):
                 except Exception:
                     is_lossless = False
 
+            metrics = calculate_metrics(self.file_path, decomp_file)
+
             self.single_results[algo_name] = {
                 "orig_size": orig_size,
                 "comp_size": comp_size,
@@ -549,7 +626,9 @@ class App(ctk.CTk):
                 "dec_time": dec_time,
                 "saving": saving,
                 "lossless": is_lossless,
-                "decomp_path": decomp_file
+                "decomp_path": decomp_file,
+                "mse": metrics["mse"],
+                "psnr": metrics["psnr"]
             }
 
         # Cari algoritma terbaik (persentase space saving tertinggi)
@@ -577,6 +656,15 @@ class App(ctk.CTk):
             valid_color = ("#10b981", "#10b981") if res['lossless'] else (("#f43f5e", "#f43f5e"))
             self.table_cells[algo]["validation"].configure(text=valid_text, text_color=valid_color)
             
+            # MSE & PSNR
+            mse_val = res.get("mse")
+            psnr_val = res.get("psnr")
+            mse_text = f"{mse_val:.4f}" if mse_val is not None else "-"
+            psnr_text = "∞" if psnr_val == float('inf') else (f"{psnr_val:.2f}" if psnr_val is not None else "-")
+            
+            self.table_cells[algo]["mse"].configure(text=mse_text)
+            self.table_cells[algo]["psnr"].configure(text=psnr_text)
+
             if algo == best_algo:
                 self.table_cells[algo]["status"].configure(text="🏆 Terbaik", text_color=("#10b981", "#10b981"))
             else:
@@ -592,27 +680,35 @@ class App(ctk.CTk):
         if not self.single_results:
             return
 
-        active_algo = self.active_algo_var.get()
-        res = self.single_results[active_algo]
-
-        # Tampilkan gambar hasil dekompresi
-        self.display_preview(self.lbl_decomp_preview, res["decomp_path"])
-
-        # Update label info hasil dekompresi
-        ratio = res['orig_size'] / res['comp_size'] if res['comp_size'] > 0 else 1.0
-        info_text = f"{res['comp_size']/1024:.2f} KB | Rasio: {ratio:.2f}:1 | Saving: {res['saving']:.2f}% | Kompresi: {res['comp_time']:.1f} ms"
-        self.lbl_decomp_info.configure(text=info_text)
-
-        # Berikan sorotan (highlight) pada baris tabel algoritma yang aktif
-        for algo in ["RLE", "LZW", "Huffman"]:
-            is_active = (algo == active_algo)
-            bg_color = ("#d1d5db", "#2e2e38") if is_active else ("#e2e8f0", "#16161a")
+        # Tampilkan gambar hasil dekompresi dan metrik untuk ketiga algoritma
+        for algo in ["Huffman", "LZW", "RLE"]:
+            res = self.single_results[algo]
+            prefix = "huf" if algo == "Huffman" else algo.lower()
             
-            for cell_key in ["name", "original", "compressed", "ratio", "saving", "comp_time", "dec_time", "validation", "status"]:
-                self.table_cells[algo][cell_key].configure(fg_color=bg_color)
+            lbl_preview = getattr(self, f"lbl_{prefix}_preview")
+            lbl_info = getattr(self, f"lbl_{prefix}_info")
+            
+            self.display_preview(lbl_preview, res["decomp_path"], max_size=200)
+            
+            # Tampilkan metrik MSE & PSNR di label info preview
+            mse_val = res.get("mse")
+            psnr_val = res.get("psnr")
+            mse_text = f"{mse_val:.4f}" if mse_val is not None else "-"
+            psnr_text = "Sempurna (∞)" if psnr_val == float('inf') else (f"{psnr_val:.2f} dB" if psnr_val is not None else "-")
+            
+            info_text = f"Ukuran: {res['comp_size']/1024:.2f} KB\nSaving: {res['saving']:.2f}%\nWaktu: {res['comp_time']:.1f} ms\nMSE: {mse_text} | PSNR: {psnr_text}"
+            lbl_info.configure(text=info_text)
 
-    def on_active_algo_changed(self, value):
-        self.update_single_previews()
+        # Cari algoritma terbaik untuk highlight di tabel perbandingan
+        best_algo = max(self.single_results.keys(), key=lambda k: self.single_results[k]["saving"])
+
+        # Berikan sorotan (highlight) pada baris tabel algoritma terbaik
+        for algo in ["RLE", "LZW", "Huffman"]:
+            is_best = (algo == best_algo)
+            bg_color = ("#d1fae5", "#064e3b") if is_best else ("#e2e8f0", "#16161a")
+            
+            for cell_key in ["name", "original", "compressed", "ratio", "saving", "comp_time", "dec_time", "validation", "mse", "psnr", "status"]:
+                self.table_cells[algo][cell_key].configure(fg_color=bg_color)
 
     def switch_to_batch_tab(self):
         # Berpindah ke tab Analisis Dataset secara langsung
@@ -676,6 +772,8 @@ class App(ctk.CTk):
                 actual_after = os.path.getsize(comp_file)
                 percent = ((actual_before - actual_after) / actual_before) * 100
                 
+                metrics = calculate_metrics(img_path, decomp_file)
+                
                 results.append({
                     "Gambar": filename,
                     "Algoritma": algo,
@@ -683,7 +781,9 @@ class App(ctk.CTk):
                     "Akhir": actual_after,
                     "Persentase": percent,
                     "Waktu_Kompresi": comp_time,
-                    "Waktu_Dekompresi": dec_time
+                    "Waktu_Dekompresi": dec_time,
+                    "MSE": metrics["mse"],
+                    "PSNR": metrics["psnr"]
                 })
                 
                 current_test += 1
@@ -768,11 +868,11 @@ class App(ctk.CTk):
             return
 
         # Setup kolom grid di scroll frame
-        for c in range(8):
+        for c in range(10):
             self.batch_scroll_frame.grid_columnconfigure(c, weight=1)
 
         # Header Tabel Scroll
-        headers = ["No", "Nama Gambar", "Algoritma", "Ukuran Awal", "Ukuran Akhir", "Rasio", "Space Saving", "Waktu Kompresi"]
+        headers = ["No", "Nama Gambar", "Algoritma", "Ukuran Awal", "Ukuran Akhir", "Rasio", "Space Saving", "Waktu Kompresi", "MSE", "PSNR"]
         for col_idx, h in enumerate(headers):
             lbl = ctk.CTkLabel(
                 self.batch_scroll_frame, 
@@ -817,6 +917,17 @@ class App(ctk.CTk):
             time_str = f"{time_comp:.1f} ms" if time_comp > 0 else "N/A"
             time_lbl = ctk.CTkLabel(self.batch_scroll_frame, text=time_str, fg_color=bg_color, font=("Consolas", 12))
             time_lbl.grid(row=i, column=7, padx=1, pady=1, sticky="nsew")
+
+            mse_val = row.get("MSE")
+            psnr_val = row.get("PSNR")
+            mse_str = f"{mse_val:.4f}" if pd.notna(mse_val) else "-"
+            psnr_str = "∞" if (psnr_val == float('inf') or (pd.notna(psnr_val) and str(psnr_val).lower() == 'inf')) else (f"{psnr_val:.2f}" if pd.notna(psnr_val) else "-")
+            
+            mse_lbl = ctk.CTkLabel(self.batch_scroll_frame, text=mse_str, fg_color=bg_color, font=("Consolas", 12))
+            mse_lbl.grid(row=i, column=8, padx=1, pady=1, sticky="nsew")
+            
+            psnr_lbl = ctk.CTkLabel(self.batch_scroll_frame, text=psnr_str, fg_color=bg_color, font=("Consolas", 12))
+            psnr_lbl.grid(row=i, column=9, padx=1, pady=1, sticky="nsew")
 
     def toggle_theme(self):
         theme = self.switch_theme_var.get()
