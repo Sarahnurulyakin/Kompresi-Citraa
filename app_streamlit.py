@@ -5,8 +5,12 @@ import tempfile
 import pandas as pd
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
 import io
+
+# Set matplotlib backend to non-interactive 'Agg' to prevent GUI/X11 crashes on Linux cloud containers
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 # Import compression/decompression functions
 from algorithms.rle import compress_file as rle_compress
@@ -15,6 +19,10 @@ from algorithms.lzw import compress_file as lzw_compress
 from algorithms.lzw import decompress_file as lzw_decompress
 from algorithms.huffman import compress_file as huffman_compress
 from algorithms.huffman import decompress_file as huffman_decompress
+
+# Buat direktori penyimpanan yang diperlukan agar tidak FileNotFound di server cloud
+os.makedirs("compressed", exist_ok=True)
+os.makedirs("decompressed", exist_ok=True)
 
 # Page configurations
 st.set_page_config(
