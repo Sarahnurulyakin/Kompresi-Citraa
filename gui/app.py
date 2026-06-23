@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Import compression/decompression functions
 from algorithms.rle import compress_file as rle_compress
@@ -13,6 +15,32 @@ from algorithms.lzw import compress_file as lzw_compress
 from algorithms.lzw import decompress_file as lzw_decompress
 from algorithms.huffman import compress_file as huffman_compress
 from algorithms.huffman import decompress_file as huffman_decompress
+
+
+def get_hex_dump(file_path, max_bytes=48):
+    """
+    Membaca file biner dan memformatnya menjadi string Hex Dump.
+    """
+    if not file_path or not os.path.exists(file_path):
+        return "File tidak ditemukan"
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read(max_bytes)
+        if not data:
+            return "File kosong"
+        
+        hex_dump = []
+        for i in range(0, len(data), 8):
+            chunk = data[i:i+8]
+            hex_str = " ".join(f"{b:02X}" for b in chunk)
+            if len(chunk) < 8:
+                hex_str = hex_str.ljust(23)
+            ascii_str = "".join(chr(b) if 32 <= b <= 126 else "." for b in chunk)
+            hex_dump.append(f"{hex_str}  | {ascii_str}")
+            
+        return "\n".join(hex_dump)
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 def get_image_details(file_path):
@@ -206,10 +234,12 @@ class App(ctk.CTk):
 
         self.tabview.add("Kompresi Tunggal")
         self.tabview.add("Analisis Dataset")
+        self.tabview.add("Visualisasi Grafik")
 
-        # Setup Tab 1 & Tab 2
+        # Setup Tab 1, Tab 2, & Tab 3
         self.setup_tab_single()
         self.setup_tab_batch()
+        self.setup_tab_charts()
 
     def setup_tab_single(self):
         tab = self.tabview.tab("Kompresi Tunggal")
@@ -257,24 +287,42 @@ class App(ctk.CTk):
         
         lbl_huf_title = ctk.CTkLabel(
             self.card_huf, 
-            text="📥 DEKOMPRESI HUFFMAN", 
-            font=("Segoe UI", 12, "bold"), 
+            text="⚡ HUFFMAN COMPRESSION", 
+            font=("Segoe UI", 11, "bold"), 
             text_color=("#1e293b", "#f8fafc")
         )
-        lbl_huf_title.pack(pady=10)
+        lbl_huf_title.pack(pady=(8, 2))
+
+        lbl_huf_hex_title = ctk.CTkLabel(self.card_huf, text="Hex Viewer (.bin)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_huf_hex_title.pack(pady=0)
+
+        self.lbl_huf_hex = ctk.CTkLabel(
+            self.card_huf,
+            text="Belum ada data",
+            font=("Consolas", 8),
+            height=65,
+            fg_color=("#cbd5e1", "#090d16"),
+            text_color=("#0f766e", "#10b981"),
+            corner_radius=6,
+            justify="left"
+        )
+        self.lbl_huf_hex.pack(padx=10, pady=(2, 4), fill="x")
+
+        lbl_huf_dec_title = ctk.CTkLabel(self.card_huf, text="Hasil Dekompresi (.bmp)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_huf_dec_title.pack(pady=0)
 
         self.lbl_huf_preview = ctk.CTkLabel(
             self.card_huf, 
             text="Silakan jalankan kompresi", 
-            width=200, 
-            height=200, 
+            width=90, 
+            height=90, 
             fg_color=("#cbd5e1", "#16161a"), 
             corner_radius=8
         )
-        self.lbl_huf_preview.pack(padx=10, pady=5, expand=True)
+        self.lbl_huf_preview.pack(padx=10, pady=(2, 4))
 
-        self.lbl_huf_info = ctk.CTkLabel(self.card_huf, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
-        self.lbl_huf_info.pack(pady=(5, 10))
+        self.lbl_huf_info = ctk.CTkLabel(self.card_huf, text="-", font=("Segoe UI", 10), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_huf_info.pack(pady=(2, 8))
 
         # Kartu Gambar LZW Decompressed
         self.card_lzw = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
@@ -282,24 +330,42 @@ class App(ctk.CTk):
         
         lbl_lzw_title = ctk.CTkLabel(
             self.card_lzw, 
-            text="📥 DEKOMPRESI LZW", 
-            font=("Segoe UI", 12, "bold"), 
+            text="⚡ LZW COMPRESSION", 
+            font=("Segoe UI", 11, "bold"), 
             text_color=("#1e293b", "#f8fafc")
         )
-        lbl_lzw_title.pack(pady=10)
+        lbl_lzw_title.pack(pady=(8, 2))
+
+        lbl_lzw_hex_title = ctk.CTkLabel(self.card_lzw, text="Hex Viewer (.bin)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_lzw_hex_title.pack(pady=0)
+
+        self.lbl_lzw_hex = ctk.CTkLabel(
+            self.card_lzw,
+            text="Belum ada data",
+            font=("Consolas", 8),
+            height=65,
+            fg_color=("#cbd5e1", "#090d16"),
+            text_color=("#0f766e", "#10b981"),
+            corner_radius=6,
+            justify="left"
+        )
+        self.lbl_lzw_hex.pack(padx=10, pady=(2, 4), fill="x")
+
+        lbl_lzw_dec_title = ctk.CTkLabel(self.card_lzw, text="Hasil Dekompresi (.bmp)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_lzw_dec_title.pack(pady=0)
 
         self.lbl_lzw_preview = ctk.CTkLabel(
             self.card_lzw, 
             text="Silakan jalankan kompresi", 
-            width=200, 
-            height=200, 
+            width=90, 
+            height=90, 
             fg_color=("#cbd5e1", "#16161a"), 
             corner_radius=8
         )
-        self.lbl_lzw_preview.pack(padx=10, pady=5, expand=True)
+        self.lbl_lzw_preview.pack(padx=10, pady=(2, 4))
 
-        self.lbl_lzw_info = ctk.CTkLabel(self.card_lzw, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
-        self.lbl_lzw_info.pack(pady=(5, 10))
+        self.lbl_lzw_info = ctk.CTkLabel(self.card_lzw, text="-", font=("Segoe UI", 10), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_lzw_info.pack(pady=(2, 8))
 
         # Kartu Gambar RLE Decompressed
         self.card_rle = ctk.CTkFrame(self.previews_frame, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
@@ -307,24 +373,42 @@ class App(ctk.CTk):
         
         lbl_rle_title = ctk.CTkLabel(
             self.card_rle, 
-            text="📥 DEKOMPRESI RLE", 
-            font=("Segoe UI", 12, "bold"), 
+            text="⚡ RLE COMPRESSION", 
+            font=("Segoe UI", 11, "bold"), 
             text_color=("#1e293b", "#f8fafc")
         )
-        lbl_rle_title.pack(pady=10)
+        lbl_rle_title.pack(pady=(8, 2))
+
+        lbl_rle_hex_title = ctk.CTkLabel(self.card_rle, text="Hex Viewer (.bin)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_rle_hex_title.pack(pady=0)
+
+        self.lbl_rle_hex = ctk.CTkLabel(
+            self.card_rle,
+            text="Belum ada data",
+            font=("Consolas", 8),
+            height=65,
+            fg_color=("#cbd5e1", "#090d16"),
+            text_color=("#0f766e", "#10b981"),
+            corner_radius=6,
+            justify="left"
+        )
+        self.lbl_rle_hex.pack(padx=10, pady=(2, 4), fill="x")
+
+        lbl_rle_dec_title = ctk.CTkLabel(self.card_rle, text="Hasil Dekompresi (.bmp)", font=("Segoe UI", 9, "bold"), text_color=("#64748b", "#94a3b8"))
+        lbl_rle_dec_title.pack(pady=0)
 
         self.lbl_rle_preview = ctk.CTkLabel(
             self.card_rle, 
             text="Silakan jalankan kompresi", 
-            width=200, 
-            height=200, 
+            width=90, 
+            height=90, 
             fg_color=("#cbd5e1", "#16161a"), 
             corner_radius=8
         )
-        self.lbl_rle_preview.pack(padx=10, pady=5, expand=True)
+        self.lbl_rle_preview.pack(padx=10, pady=(2, 4))
 
-        self.lbl_rle_info = ctk.CTkLabel(self.card_rle, text="-", font=("Segoe UI", 11), text_color=("#64748b", "#94a3b8"), justify="left")
-        self.lbl_rle_info.pack(pady=(5, 10))
+        self.lbl_rle_info = ctk.CTkLabel(self.card_rle, text="-", font=("Segoe UI", 10), text_color=("#64748b", "#94a3b8"), justify="left")
+        self.lbl_rle_info.pack(pady=(2, 8))
 
         # Tabel Perbandingan (Bawah)
         self.table_wrapper = ctk.CTkFrame(tab, fg_color=("#f1f5f9", "#1e1e24"), corner_radius=10)
@@ -354,8 +438,8 @@ class App(ctk.CTk):
 
         headers = [
             "Algoritma", "Ukuran Awal", "Ukuran Akhir", 
-            "Rasio Kompresi", "Space Saving", "Waktu Kompresi", 
-            "Waktu Dekompresi", "Validasi Lossless", "MSE", "PSNR", "Status"
+            "Rasio Kompresi", "Persentase Reduksi (%)", "Waktu Kompresi (ms)", 
+            "Waktu Dekompresi (ms)", "Validasi Lossless", "MSE", "PSNR", "Status"
         ]
 
         for col_idx, h in enumerate(headers):
@@ -506,6 +590,165 @@ class App(ctk.CTk):
             self.update_batch_table()
             self.batch_status_lbl.configure(text="Data dimuat dari hasil_kompresi.csv.")
 
+    def setup_tab_charts(self):
+        tab = self.tabview.tab("Visualisasi Grafik")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
+
+        # Kontrol Atas
+        self.charts_control_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        self.charts_control_frame.grid(row=0, column=0, pady=(10, 5), sticky="ew")
+
+        lbl_source = ctk.CTkLabel(self.charts_control_frame, text="Pilih Sumber Data Grafik:", font=("Segoe UI", 12, "bold"))
+        lbl_source.pack(side="left", padx=10)
+
+        self.chart_source_var = ctk.StringVar(value="Gambar Tunggal")
+        self.chart_source_option = ctk.CTkOptionMenu(
+            self.charts_control_frame,
+            values=["Gambar Tunggal", "Analisis Dataset (Rata-rata)"],
+            variable=self.chart_source_var,
+            font=("Segoe UI", 12),
+            command=lambda *args: self.draw_charts()
+        )
+        self.chart_source_option.pack(side="left", padx=5)
+
+        self.btn_refresh_charts = ctk.CTkButton(
+            self.charts_control_frame,
+            text="🔄 Segarkan Grafik",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=("#64748b", "#334155"),
+            hover_color=("#475569", "#1e293b"),
+            command=self.draw_charts
+        )
+        self.btn_refresh_charts.pack(side="left", padx=10)
+
+        # Frame untuk Canvas Grafik
+        self.chart_display_frame = ctk.CTkFrame(tab, fg_color=("#f1f5f9", "#16161a"), corner_radius=10)
+        self.chart_display_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        
+        self.draw_charts()
+
+    def draw_charts(self):
+        # Clear existing widgets in chart_display_frame
+        for widget in self.chart_display_frame.winfo_children():
+            widget.destroy()
+
+        source = self.chart_source_var.get()
+        appearance_mode = ctk.get_appearance_mode().lower() # 'dark' or 'light'
+        
+        # Colors based on theme
+        if appearance_mode == "dark":
+            bg_color = "#16161a"
+            text_color = "#f8fafc"
+            ax_bg = "#1e1e24"
+            grid_color = "#334155"
+        else:
+            bg_color = "#f1f5f9"
+            text_color = "#1e293b"
+            ax_bg = "#ffffff"
+            grid_color = "#cbd5e1"
+
+        algos = ["RLE", "LZW", "Huffman"]
+        bar_colors = ["#3b82f6", "#10b981", "#8b5cf6"] # Blue, Emerald, Violet
+
+        ratios = []
+        reductions = []
+        times = []
+        title_text = ""
+
+        if source == "Gambar Tunggal":
+            if not self.single_results:
+                lbl = ctk.CTkLabel(
+                    self.chart_display_frame,
+                    text="Belum ada data Gambar Tunggal.\nSilakan pilih gambar dan klik 'Jalankan Kompresi' di tab pertama.",
+                    font=("Segoe UI", 14, "bold"),
+                    text_color=("#64748b", "#94a3b8")
+                )
+                lbl.pack(expand=True, pady=100)
+                return
+            
+            for algo in algos:
+                res = self.single_results[algo]
+                ratio = res['orig_size'] / res['comp_size'] if res['comp_size'] > 0 else 1.0
+                ratios.append(ratio)
+                reductions.append(res['saving'])
+                times.append(res['comp_time'])
+            
+            filename = os.path.basename(self.file_path) if self.file_path else "Gambar"
+            title_text = f"Perbandingan Metrik Kompresi untuk: {filename}"
+
+        else: # Analisis Dataset
+            if self.batch_df is None or self.batch_df.empty:
+                lbl = ctk.CTkLabel(
+                    self.chart_display_frame,
+                    text="Belum ada data Analisis Dataset.\nSilakan jalankan pengujian dataset di tab 'Analisis Dataset' terlebih dahulu.",
+                    font=("Segoe UI", 14, "bold"),
+                    text_color=("#64748b", "#94a3b8")
+                )
+                lbl.pack(expand=True, pady=100)
+                return
+            
+            # Calculate averages
+            avg_savings = self.batch_df.groupby("Algoritma")["Persentase"].mean()
+            avg_times = self.batch_df.groupby("Algoritma")["Waktu_Kompresi"].mean()
+            
+            # Calculate average ratio
+            if "Rasio" not in self.batch_df.columns:
+                self.batch_df["Rasio"] = self.batch_df["Awal"] / self.batch_df["Akhir"]
+            avg_ratios = self.batch_df.groupby("Algoritma")["Rasio"].mean()
+
+            for algo in algos:
+                ratios.append(avg_ratios.get(algo, 1.0))
+                reductions.append(avg_savings.get(algo, 0.0))
+                times.append(avg_times.get(algo, 0.0))
+            
+            num_images = len(self.batch_df) // 3
+            title_text = f"Rata-rata Performa Kompresi pada Dataset ({num_images} Gambar)"
+
+        # Create Matplotlib Figure
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(11, 4.5), facecolor=bg_color)
+        fig.suptitle(title_text, color=text_color, fontsize=14, fontweight="bold", y=0.98)
+
+        def style_ax(ax, title, ylabel):
+            ax.set_title(title, color=text_color, fontsize=11, fontweight="bold", pad=10)
+            ax.set_facecolor(ax_bg)
+            ax.tick_params(colors=text_color, labelsize=9)
+            ax.spines['bottom'].set_color(grid_color)
+            ax.spines['top'].set_color('none')
+            ax.spines['right'].set_color('none')
+            ax.spines['left'].set_color(grid_color)
+            ax.yaxis.grid(True, linestyle='--', alpha=0.5, color=grid_color)
+            ax.set_ylabel(ylabel, color=text_color, fontsize=9)
+
+        # Plot 1: Rasio Kompresi
+        bars1 = ax1.bar(algos, ratios, color=bar_colors, width=0.5, edgecolor=bg_color, linewidth=1.5)
+        style_ax(ax1, "Rasio Kompresi\n(lebih tinggi = lebih baik)", "Rasio (X : 1)")
+        for bar in bars1:
+            yval = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2, yval + 0.05, f"{yval:.2f}x", ha='center', va='bottom', color=text_color, fontsize=9, fontweight='bold')
+
+        # Plot 2: Persentase Reduksi
+        bars2 = ax2.bar(algos, reductions, color=bar_colors, width=0.5, edgecolor=bg_color, linewidth=1.5)
+        style_ax(ax2, "Persentase Reduksi (%)\n(lebih tinggi = lebih baik)", "Persentase (%)")
+        for bar in bars2:
+            yval = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2, yval + 0.5, f"{yval:.2f}%", ha='center', va='bottom', color=text_color, fontsize=9, fontweight='bold')
+
+        # Plot 3: Waktu Proses Kompresi
+        bars3 = ax3.bar(algos, times, color=bar_colors, width=0.5, edgecolor=bg_color, linewidth=1.5)
+        style_ax(ax3, "Waktu Kompresi\n(lebih rendah = lebih cepat)", "Waktu (ms)")
+        for bar in bars3:
+            yval = bar.get_height()
+            offset = 0.05 * max(times) if times and max(times) > 0 else 0.05
+            ax3.text(bar.get_x() + bar.get_width()/2, yval + offset, f"{yval:.1f} ms", ha='center', va='bottom', color=text_color, fontsize=9, fontweight='bold')
+
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        canvas = FigureCanvasTkAgg(fig, master=self.chart_display_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True, padx=5, pady=5)
+        plt.close(fig)
+
     def open_image(self):
         file_path = filedialog.askopenfilename(
             initialdir="bmp_dataset",
@@ -539,8 +782,11 @@ class App(ctk.CTk):
         # Reset preview hasil dekompresi & tabel perbandingan
         for algo in ["huf", "lzw", "rle"]:
             getattr(self, f"lbl_{algo}_preview").configure(image=None, text="Menunggu kompresi...")
+            getattr(self, f"lbl_{algo}_hex").configure(text="Menunggu kompresi...")
             getattr(self, f"lbl_{algo}_info").configure(text="-")
         self.build_comparison_table()
+        if hasattr(self, "draw_charts"):
+            self.draw_charts()
 
         # Aktifkan tombol kompresi
         self.btn_compress.configure(state="normal")
@@ -672,6 +918,8 @@ class App(ctk.CTk):
 
         # Update preview hasil dekompresi & sorotan baris
         self.update_single_previews()
+        if hasattr(self, "draw_charts"):
+            self.draw_charts()
 
         self.btn_compress.configure(state="normal")
         self.btn_open.configure(state="normal")
@@ -681,14 +929,22 @@ class App(ctk.CTk):
             return
 
         # Tampilkan gambar hasil dekompresi dan metrik untuk ketiga algoritma
+        filename = os.path.splitext(os.path.basename(self.file_path))[0]
         for algo in ["Huffman", "LZW", "RLE"]:
             res = self.single_results[algo]
             prefix = "huf" if algo == "Huffman" else algo.lower()
             
             lbl_preview = getattr(self, f"lbl_{prefix}_preview")
+            lbl_hex = getattr(self, f"lbl_{prefix}_hex")
             lbl_info = getattr(self, f"lbl_{prefix}_info")
             
-            self.display_preview(lbl_preview, res["decomp_path"], max_size=200)
+            # Display decompressed thumbnail
+            self.display_preview(lbl_preview, res["decomp_path"], max_size=90)
+            
+            # Display compressed binary hex dump
+            comp_file = os.path.join("compressed", f"{filename}_{algo}.bin")
+            hex_dump = get_hex_dump(comp_file)
+            lbl_hex.configure(text=hex_dump)
             
             # Tampilkan metrik MSE & PSNR di label info preview
             mse_val = res.get("mse")
@@ -696,7 +952,15 @@ class App(ctk.CTk):
             mse_text = f"{mse_val:.4f}" if mse_val is not None else "-"
             psnr_text = "Sempurna (∞)" if psnr_val == float('inf') else (f"{psnr_val:.2f} dB" if psnr_val is not None else "-")
             
-            info_text = f"Ukuran: {res['comp_size']/1024:.2f} KB\nSaving: {res['saving']:.2f}%\nWaktu: {res['comp_time']:.1f} ms\nMSE: {mse_text} | PSNR: {psnr_text}"
+            ratio = res['orig_size'] / res['comp_size'] if res['comp_size'] > 0 else 1.0
+            info_text = (
+                f"Ukuran Akhir: {res['comp_size']/1024:.2f} KB\n"
+                f"Rasio Kompresi: {ratio:.2f} : 1\n"
+                f"Persentase Reduksi: {res['saving']:.2f}%\n"
+                f"Waktu Kompresi: {res['comp_time']:.2f} ms\n"
+                f"Waktu Dekompresi: {res['dec_time']:.2f} ms\n"
+                f"MSE: {mse_text} | PSNR: {psnr_text}"
+            )
             lbl_info.configure(text=info_text)
 
         # Cari algoritma terbaik untuk highlight di tabel perbandingan
@@ -800,14 +1064,16 @@ class App(ctk.CTk):
         # Perbarui ringkasan & tabel scrollable
         self.update_batch_summaries()
         self.update_batch_table()
+        if hasattr(self, "draw_charts"):
+            self.draw_charts()
         
         messagebox.showinfo("Selesai", f"Pengujian selesai! Berhasil memproses {total_tests} pengujian.")
 
     def update_batch_summaries(self):
         if self.batch_df is None or self.batch_df.empty:
-            self.lbl_rle_summary.configure(text="RLE\n\nAvg Saving: -\nAvg Time: -")
-            self.lbl_lzw_summary.configure(text="LZW\n\nAvg Saving: -\nAvg Time: -")
-            self.lbl_huf_summary.configure(text="Huffman\n\nAvg Saving: -\nAvg Time: -")
+            self.lbl_rle_summary.configure(text="RLE\n\nRata-rata Reduksi: -\nRata-rata Waktu: -")
+            self.lbl_lzw_summary.configure(text="LZW\n\nRata-rata Reduksi: -\nRata-rata Waktu: -")
+            self.lbl_huf_summary.configure(text="Huffman\n\nRata-rata Reduksi: -\nRata-rata Waktu: -")
             return
             
         avg_savings = self.batch_df.groupby("Algoritma")["Persentase"].mean()
@@ -822,11 +1088,11 @@ class App(ctk.CTk):
             t_comp = avg_times.get(algo, 0.0)
             
             info_text = f"{algo}\n\n"
-            info_text += f"Rata-rata Saving : {saving:.2f}%\n"
-            info_text += f"Rata-rata Waktu  : {t_comp:.2f} ms\n"
+            info_text += f"Rata-rata Reduksi : {saving:.2f}%\n"
+            info_text += f"Rata-rata Waktu   : {t_comp:.2f} ms\n"
             
             if algo == best_algo:
-                info_text += "\n🏆 TERBAIK (HIGHEST SAVING)"
+                info_text += "\n🏆 TERBAIK (REDUKSI TERTINGGI)"
                 card.configure(border_color="#10b981", border_width=2)
             else:
                 card.configure(border_color="#22222a", border_width=0)
@@ -872,12 +1138,12 @@ class App(ctk.CTk):
             self.batch_scroll_frame.grid_columnconfigure(c, weight=1)
 
         # Header Tabel Scroll
-        headers = ["No", "Nama Gambar", "Algoritma", "Ukuran Awal", "Ukuran Akhir", "Rasio", "Space Saving", "Waktu Kompresi", "MSE", "PSNR"]
+        headers = ["No", "Nama Gambar", "Algoritma", "Ukuran Awal", "Ukuran Akhir", "Rasio Kompresi", "Persentase Reduksi (%)", "Waktu Kompresi (ms)", "MSE", "PSNR"]
         for col_idx, h in enumerate(headers):
             lbl = ctk.CTkLabel(
                 self.batch_scroll_frame, 
                 text=h, 
-                font=("Segoe UI", 12, "bold"), 
+                font=("Segoe UI", 11, "bold"), 
                 text_color=("#475569", "#a0a0a5")
             )
             lbl.grid(row=0, column=col_idx, padx=5, pady=5, sticky="nsew")
@@ -935,6 +1201,8 @@ class App(ctk.CTk):
             ctk.set_appearance_mode("dark")
         else:
             ctk.set_appearance_mode("light")
+        if hasattr(self, "draw_charts"):
+            self.draw_charts()
 
 # Bootstrapping
 if __name__ == "__main__":
